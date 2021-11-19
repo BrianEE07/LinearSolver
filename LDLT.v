@@ -41,6 +41,7 @@ module LDLT #(
     reg signed [DATA_LEN + FRACTION - 1:0] quotient;
     reg signed [DATA_LEN + FRACTION - 1:0] mul1;
     reg signed [DATA_LEN + FRACTION - 1:0] mul2;
+    reg signed [DATA_LEN + FRACTION - 1:0] tmp;
 
     assign o_ready = o_ready_r;
     assign o_valid = o_valid_r;
@@ -54,16 +55,16 @@ module LDLT #(
                 else         state_w = IDLE;
             end
             READ: begin
-                if (j_r == 6 * NODE_NUM) state_w = PROC;
-                else                     state_w = READ;
+                if (j_r == 6 * NODE_NUM - 1 && i_r == 6 * NODE_NUM - 1) state_w = PROC;
+                else                                                    state_w = READ;
             end
             PROC: begin
-                if (i_r == 6 * NODE_NUM) state_w = WRTE;
-                else                     state_w = PROC;
+                if (i_r == 6 * NODE_NUM - 1 && j_r == i_r - 1 && k_r == j_r - 1) state_w = WRTE;
+                else                                                             state_w = PROC;
             end
             WRTE: begin
-                if (j_r == 6 * NODE_NUM) state_w = IDLE;
-                else                     state_w = WRTE;
+                if (j_r == 6 * NODE_NUM - 1 && i_r == 6 * NODE_NUM - 1) state_w = IDLE;
+                else                                                    state_w = WRTE;
             end
             default: state_w = state_r;
         endcase
@@ -90,64 +91,80 @@ module LDLT #(
                     o_ready_w = 0;
             end
             READ: begin
-                o_ready_w = ~(j_r >= 6 * NODE_NUM - 1 || i_r == 6 * NODE_NUM - 1);
-                if (j_r == 6 * NODE_NUM) begin
+                o_ready_w       = ~(j_r == 6 * NODE_NUM - 1 && i_r == 6 * NODE_NUM - 1);
+                Mat_w[i_r][j_r] = i_data;
+                if (j_r == 6 * NODE_NUM - 1 && i_r == 6 * NODE_NUM - 1) begin
                     j_w = 0;
                     i_w = 0;
                 end
                 else begin
-                    if (i_r == 6 * NODE_NUM) begin
+                    if (i_r == 6 * NODE_NUM - 1) begin
                         j_w = j_r + 1;
                         i_w = j_r + 1;
                     end
                     else begin
                         i_w = i_r + 1;
-                        Mat_w[i_r][j_r] = i_data;
                     end
                 end
             end
             PROC: begin
-                if (i_r == 6 * NODE_NUM) begin
+                mul1 = (Mat_r[i_r][k_r] * Mat_r[k_r][k_r]) >>> FRACTION;
+                mul2 = (mul1            * Mat_r[j_r][k_r]) >>> FRACTION;
+                if (i_r != 0 && j_r == 0) begin
+                    Mat_w[i_r][j_r] = (Mat_r[i_r][j_r] << FRACTION) / Mat_r[j_r][j_r];
+                    Mat_w[i_r][i_r] = Mat_r[i_r][i_r] - (Mat_r[i_r][j_r] * Mat_r[i_r][j_r]) / Mat_r[j_r][j_r];
+                end
+                else if (i_r != 0) begin
+                    if (k_r != j_r - 1) begin
+                        Mat_w[i_r][j_r] = Mat_r[i_r][j_r] - mul2;
+                    end
+                    else begin
+                        Mat_w[i_r][j_r] = ((Mat_r[i_r][j_r] - mul2) << FRACTION) / Mat_r[j_r][j_r];
+                        Mat_w[i_r][i_r] = Mat_r[i_r][i_r] - ((Mat_r[i_r][j_r] - mul2) * (Mat_r[i_r][j_r] - mul2)) / Mat_r[j_r][j_r];
+                    end
+                end
+                if (i_r == 6 * NODE_NUM - 1 && j_r == i_r - 1 && k_r == j_r - 1) begin
                     i_w = 0;
                     j_w = 0;
                     k_w = 0;
                 end
+                else if (i_r == 0) begin
+                    i_w = i_r + 1;
+                end
                 else begin
-                    if (j_r == i_r) begin
+                    if (j_r == i_r - 1 && (j_r == 0 || k_r == j_r - 1)) begin
                         i_w = i_r + 1;
                         j_w = 0;
+                        k_w = 0;
+                    end
+                    else if (j_r == 0) begin
+                        j_w = j_r + 1;
                     end
                     else begin
-                        if (k_r == j_r) begin
+                        if (k_r == j_r - 1) begin
                             j_w = j_r + 1;
                             k_w = 0;
-                            quotient = (Mat_r[i_r][j_r] << FRACTION) / Mat_r[j_r][j_r];
-                            Mat_w[i_r][j_r] = quotient;
-                            Mat_w[i_r][i_r] = Mat_r[i_r][i_r] - (Mat_r[i_r][j_r] * Mat_r[i_r][j_r]) / Mat_r[j_r][j_r];
                         end
                         else begin
                             k_w = k_r + 1;
-                            mul1 = (Mat_r[i_r][k_r] * Mat_r[k_r][k_r]) >>> FRACTION;
-                            mul2 = (mul1            * Mat_r[j_r][k_r]) >>> FRACTION;
-                            Mat_w[i_r][j_r] = Mat_r[i_r][j_r] - mul2;
                         end
                     end
                 end
             end
             WRTE: begin
-                if (j_r == 6 * NODE_NUM) begin
+                o_valid_w = 1;
+                o_data_w = Mat_r[i_r][j_r];
+                if (j_r == 6 * NODE_NUM - 1 && i_r == 6 * NODE_NUM - 1) begin
                     j_w = 0;
                     i_w = 0;
                 end
                 else begin
-                    if (i_r == 6 * NODE_NUM) begin
+                    if (i_r == 6 * NODE_NUM - 1) begin
                         j_w = j_r + 1;
                         i_w = j_r + 1;
                     end
                     else begin
                         i_w = i_r + 1;
-                        o_data_w = Mat_r[i_r][j_r];
-                        o_valid_w = 1;
                     end
                 end
             end

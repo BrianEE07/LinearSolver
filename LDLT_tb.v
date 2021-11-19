@@ -46,11 +46,11 @@ module LDLT_tb;
     end
 
     initial begin
-        clk   = 0;
-        rst_n = 1;
+        clk     = 0;
+        rst_n   = 1;
         i_start = 0;
-        #(`CYCLE * 0.5) rst_n = 0;
-        #(`CYCLE * 2.0) rst_n = 1;
+        #(`CYCLE * 0.5) rst_n   = 0;
+        #(`CYCLE * 2.0) rst_n   = 1;
         #(`CYCLE * 0.5) i_start = 1;
         i = 0;
         while (i < L_SIZE) begin
