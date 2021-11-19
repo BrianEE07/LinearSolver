@@ -70,29 +70,14 @@ module LDLT #(
         endcase
     end
 
-    // Combinational
+    // Index Control
     always @(*) begin
         i_w = i_r;
         j_w = j_r;
         k_w = k_r;
-        o_data_w = 0;
-        o_ready_w = 0;
-        o_valid_w = 0;
-        for (i = 0;i < 6 * NODE_NUM;i = i + 1) begin
-            for (j = 0;j < 6 * NODE_NUM;j = j + 1) begin
-                Mat_w[i][j] = Mat_r[i][j];
-            end
-        end
         case (state_r)
-            IDLE: begin
-                if (i_start)
-                    o_ready_w = 1;
-                else
-                    o_ready_w = 0;
-            end
+            IDLE: ;
             READ: begin
-                o_ready_w       = ~(j_r == 6 * NODE_NUM - 1 && i_r == 6 * NODE_NUM - 1);
-                Mat_w[i_r][j_r] = i_data;
                 if (j_r == 6 * NODE_NUM - 1 && i_r == 6 * NODE_NUM - 1) begin
                     j_w = 0;
                     i_w = 0;
@@ -108,21 +93,6 @@ module LDLT #(
                 end
             end
             PROC: begin
-                mul1 = (Mat_r[i_r][k_r] * Mat_r[k_r][k_r]) >>> FRACTION;
-                mul2 = (mul1            * Mat_r[j_r][k_r]) >>> FRACTION;
-                if (i_r != 0 && j_r == 0) begin
-                    Mat_w[i_r][j_r] = (Mat_r[i_r][j_r] << FRACTION) / Mat_r[j_r][j_r];
-                    Mat_w[i_r][i_r] = Mat_r[i_r][i_r] - (Mat_r[i_r][j_r] * Mat_r[i_r][j_r]) / Mat_r[j_r][j_r];
-                end
-                else if (i_r != 0) begin
-                    if (k_r != j_r - 1) begin
-                        Mat_w[i_r][j_r] = Mat_r[i_r][j_r] - mul2;
-                    end
-                    else begin
-                        Mat_w[i_r][j_r] = ((Mat_r[i_r][j_r] - mul2) << FRACTION) / Mat_r[j_r][j_r];
-                        Mat_w[i_r][i_r] = Mat_r[i_r][i_r] - ((Mat_r[i_r][j_r] - mul2) * (Mat_r[i_r][j_r] - mul2)) / Mat_r[j_r][j_r];
-                    end
-                end
                 if (i_r == 6 * NODE_NUM - 1 && j_r == i_r - 1 && k_r == j_r - 1) begin
                     i_w = 0;
                     j_w = 0;
@@ -152,8 +122,6 @@ module LDLT #(
                 end
             end
             WRTE: begin
-                o_valid_w = 1;
-                o_data_w = Mat_r[i_r][j_r];
                 if (j_r == 6 * NODE_NUM - 1 && i_r == 6 * NODE_NUM - 1) begin
                     j_w = 0;
                     i_w = 0;
@@ -167,6 +135,52 @@ module LDLT #(
                         i_w = i_r + 1;
                     end
                 end
+            end
+            default: ;
+        endcase
+    end
+
+    // Combinational
+    always @(*) begin
+        o_data_w = 0;
+        o_ready_w = 0;
+        o_valid_w = 0;
+        for (i = 0;i < 6 * NODE_NUM;i = i + 1) begin
+            for (j = 0;j < 6 * NODE_NUM;j = j + 1) begin
+                Mat_w[i][j] = Mat_r[i][j];
+            end
+        end
+        case (state_r)
+            IDLE: begin
+                if (i_start)
+                    o_ready_w = 1;
+                else
+                    o_ready_w = 0;
+            end
+            READ: begin
+                o_ready_w       = ~(j_r == 6 * NODE_NUM - 1 && i_r == 6 * NODE_NUM - 1);
+                Mat_w[i_r][j_r] = i_data;
+            end
+            PROC: begin
+                mul1 = (Mat_r[i_r][k_r] * Mat_r[k_r][k_r]) >>> FRACTION;
+                mul2 = (mul1            * Mat_r[j_r][k_r]) >>> FRACTION;
+                if (i_r != 0 && j_r == 0) begin
+                    Mat_w[i_r][j_r] = (Mat_r[i_r][j_r] << FRACTION) / Mat_r[j_r][j_r];
+                    Mat_w[i_r][i_r] = Mat_r[i_r][i_r] - (Mat_r[i_r][j_r] * Mat_r[i_r][j_r]) / Mat_r[j_r][j_r];
+                end
+                else if (i_r != 0) begin
+                    if (k_r != j_r - 1) begin
+                        Mat_w[i_r][j_r] = Mat_r[i_r][j_r] - mul2;
+                    end
+                    else begin
+                        Mat_w[i_r][j_r] = ((Mat_r[i_r][j_r] - mul2) << FRACTION) / Mat_r[j_r][j_r];
+                        Mat_w[i_r][i_r] = Mat_r[i_r][i_r] - ((Mat_r[i_r][j_r] - mul2) * (Mat_r[i_r][j_r] - mul2)) / Mat_r[j_r][j_r];
+                    end
+                end
+            end
+            WRTE: begin
+                o_valid_w = 1;
+                o_data_w = Mat_r[i_r][j_r];
             end
             default: ;
         endcase
