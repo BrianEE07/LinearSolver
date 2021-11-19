@@ -1,114 +1,158 @@
-module LDLT (
+module LDLT #(
+	parameter DATA_LEN = 34,
+	parameter NODE_NUM = 100,
+	parameter FRACTION = 16
+)(
     clk,
     rst_n,
     i_start,
-    i_Mat_flat,
+    i_data,
+    o_ready,
     o_valid,
-    o_L
-    );
+    o_data
+);
 
-    parameter WORD_LEN = 14;
-    parameter NODE_NUM = 1;
-    parameter FRACTION = 7;
-    parameter MAT_SIZE = 6 * NODE_NUM * 6 * NODE_NUM;
-    parameter L_SIZE   = (MAT_SIZE + 6 * NODE_NUM) / 2;
-    localparam IDLE = 1'b0 , BUSY = 1'b1;
+    localparam IDLE = 2'b00;
+    localparam READ = 2'b01;
+    localparam PROC = 2'b10;
+    localparam WRTE = 2'b11;
+
     integer i, j;
 
-    input clk, rst_n;
-    input i_start;
-    input [MAT_SIZE * WORD_LEN - 1:0] i_Mat_flat; // too large
-    output o_valid;
-    output [L_SIZE * WORD_LEN - 1:0] o_L;
+    input                   clk, rst_n;
+    input                   i_start;
+    input  [DATA_LEN - 1:0] i_data;
+    output                  o_ready;
+    output                  o_valid;
+    output [DATA_LEN - 1:0] o_data;
 
-    wire valid;
-    reg state_r, state_w;
+    reg [1:0]             state_r, state_w;
+    reg                   o_valid_r, o_valid_w;
+    reg                   o_ready_r, o_ready_w;
+    reg [DATA_LEN - 1:0]  o_data_r, o_data_w;
 
-    reg [9:0] cnt_i_r, cnt_i_w; // cycle count i 
-    reg [9:0] cnt_j_r, cnt_j_w; // cycle count j
-    reg [9:0] cnt_k_r, cnt_k_w; // cycle count k
+    reg [9:0] i_r, i_w; // cycle count i 
+    reg [9:0] j_r, j_w; // cycle count j
+    reg [9:0] k_r, k_w; // cycle count k
 
-    reg signed [WORD_LEN - 1:0]     Mat_r [0:6 * NODE_NUM - 1] [0:6 * NODE_NUM - 1];
-    reg signed [2 * WORD_LEN - 1:0] Mat_w [0:6 * NODE_NUM - 1] [0:6 * NODE_NUM - 1];
+    reg signed [DATA_LEN - 1:0]     Mat_r [0:6 * NODE_NUM - 1] [0:6 * NODE_NUM - 1];
+    reg signed [2 * DATA_LEN - 1:0] Mat_w [0:6 * NODE_NUM - 1] [0:6 * NODE_NUM - 1];
     
-    reg signed [WORD_LEN + FRACTION - 1:0] quotient;
-    reg signed [WORD_LEN + FRACTION - 1:0] mul1;
-    reg signed [WORD_LEN + FRACTION - 1:0] mul2;
+    reg signed [DATA_LEN + FRACTION - 1:0] quotient;
+    reg signed [DATA_LEN + FRACTION - 1:0] mul1;
+    reg signed [DATA_LEN + FRACTION - 1:0] mul2;
 
-    assign valid = (cnt_i_r == 6 * NODE_NUM);
-
-    assign o_valid = valid;
-    assign o_L     = 0;
+    assign o_ready = o_ready_r;
+    assign o_valid = o_valid_r;
+    assign o_data  = o_data_r;
 
     // FSM
     always @(*) begin
         case (state_r)
             IDLE: begin
-               if (i_start) begin
-                   state_w = BUSY;
-               end
-               else begin
-                   state_w = IDLE;
-               end
+                if (i_start) state_w = READ;
+                else         state_w = IDLE;
             end
-            BUSY: begin
-                if (valid) begin
-                    state_w = IDLE;
-                end
-                else begin
-                    state_w = BUSY;
-                end
+            READ: begin
+                if (j_r == 6 * NODE_NUM) state_w = PROC;
+                else                     state_w = READ;
             end
-            default: state_w = IDLE;
+            PROC: begin
+                if (i_r == 6 * NODE_NUM) state_w = WRTE;
+                else                     state_w = PROC;
+            end
+            WRTE: begin
+                if (j_r == 6 * NODE_NUM) state_w = IDLE;
+                else                     state_w = WRTE;
+            end
+            default: state_w = state_r;
         endcase
     end
 
     // Combinational
     always @(*) begin
-        if (state_r == IDLE) begin
-            cnt_i_w = 0;
-            cnt_j_w = 0;
-            cnt_k_w = 0;
-            for (i = 0;i < 6 * NODE_NUM;i = i + 1) begin
-                for (j = 0;j < 6 * NODE_NUM;j = j + 1) begin
-                    Mat_w[i][j] = i_Mat_flat[(6 * NODE_NUM * i + j) * WORD_LEN +: WORD_LEN];
-                end
+        i_w = i_r;
+        j_w = j_r;
+        k_w = k_r;
+        o_data_w = 0;
+        o_ready_w = 0;
+        o_valid_w = 0;
+        for (i = 0;i < 6 * NODE_NUM;i = i + 1) begin
+            for (j = 0;j < 6 * NODE_NUM;j = j + 1) begin
+                Mat_w[i][j] = Mat_r[i][j];
             end
         end
-        else begin
-            cnt_i_w = cnt_i_r;
-            cnt_j_w = cnt_j_r;
-            cnt_k_w = cnt_k_r;
-            for (i = 0;i < 6 * NODE_NUM;i = i + 1) begin
-                for (j = 0;j < 6 * NODE_NUM;j = j + 1) begin
-                    Mat_w[i][j] = Mat_r[i][j];
-                end
+        case (state_r)
+            IDLE: begin
+                if (i_start)
+                    o_ready_w = 1;
+                else
+                    o_ready_w = 0;
             end
-            if (cnt_i_r < 6 * NODE_NUM) begin
-                if (cnt_j_r < cnt_i_r) begin
-                    if (cnt_k_r < cnt_j_r) begin
-                        cnt_k_w = cnt_k_r + 1;
-                        mul1 = (Mat_r[cnt_i_r][cnt_k_r] * Mat_r[cnt_k_r][cnt_k_r]) >>> FRACTION;
-                        mul2 = mul1 * Mat_r[cnt_j_r][cnt_k_r] >>> FRACTION;
-                        Mat_w[cnt_i_r][cnt_j_r] = Mat_r[cnt_i_r][cnt_j_r] - mul2;
-                    end
-                    else begin
-                        cnt_k_w = 0;
-                        cnt_j_w = cnt_j_r + 1;
-                        quotient = (Mat_r[cnt_i_r][cnt_j_r] << FRACTION) / Mat_r[cnt_j_r][cnt_j_r];
-                        Mat_w[cnt_i_r][cnt_j_r] = quotient;
-                        Mat_w[cnt_i_r][cnt_i_r] = Mat_r[cnt_i_r][cnt_i_r] - (Mat_r[cnt_i_r][cnt_j_r] * Mat_r[cnt_i_r][cnt_j_r]) / Mat_r[cnt_j_r][cnt_j_r];
-                    end
+            READ: begin
+                o_ready_w = ~(j_r >= 6 * NODE_NUM - 1 || i_r == 6 * NODE_NUM - 1);
+                if (j_r == 6 * NODE_NUM) begin
+                    j_w = 0;
+                    i_w = 0;
                 end
                 else begin
-                    cnt_j_w = 0;
-                    cnt_i_w = cnt_i_r + 1;
+                    if (i_r == 6 * NODE_NUM) begin
+                        j_w = j_r + 1;
+                        i_w = j_r + 1;
+                    end
+                    else begin
+                        i_w = i_r + 1;
+                        Mat_w[i_r][j_r] = i_data;
+                    end
                 end
             end
-            else begin
-                cnt_i_w = 0;
+            PROC: begin
+                if (i_r == 6 * NODE_NUM) begin
+                    i_w = 0;
+                    j_w = 0;
+                    k_w = 0;
+                end
+                else begin
+                    if (j_r == i_r) begin
+                        i_w = i_r + 1;
+                        j_w = 0;
+                    end
+                    else begin
+                        if (k_r == j_r) begin
+                            j_w = j_r + 1;
+                            k_w = 0;
+                            quotient = (Mat_r[i_r][j_r] << FRACTION) / Mat_r[j_r][j_r];
+                            Mat_w[i_r][j_r] = quotient;
+                            Mat_w[i_r][i_r] = Mat_r[i_r][i_r] - (Mat_r[i_r][j_r] * Mat_r[i_r][j_r]) / Mat_r[j_r][j_r];
+                        end
+                        else begin
+                            k_w = k_r + 1;
+                            mul1 = (Mat_r[i_r][k_r] * Mat_r[k_r][k_r]) >>> FRACTION;
+                            mul2 = (mul1            * Mat_r[j_r][k_r]) >>> FRACTION;
+                            Mat_w[i_r][j_r] = Mat_r[i_r][j_r] - mul2;
+                        end
+                    end
+                end
             end
-        end
+            WRTE: begin
+                if (j_r == 6 * NODE_NUM) begin
+                    j_w = 0;
+                    i_w = 0;
+                end
+                else begin
+                    if (i_r == 6 * NODE_NUM) begin
+                        j_w = j_r + 1;
+                        i_w = j_r + 1;
+                    end
+                    else begin
+                        i_w = i_r + 1;
+                        o_data_w = Mat_r[i_r][j_r];
+                        o_valid_w = 1;
+                    end
+                end
+            end
+            default: ;
+        endcase
     end
 
 
@@ -116,9 +160,12 @@ module LDLT (
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             state_r <= IDLE;
-            cnt_i_r <= 0;
-            cnt_j_r <= 0;
-            cnt_k_r <= 0;
+            o_data_r <= 0;
+            o_ready_r <= 0;
+            o_valid_r <= 0;
+            i_r <= 0;
+            j_r <= 0;
+            k_r <= 0;
             for (i = 0;i < 6 * NODE_NUM;i = i + 1) begin
                 for (j = 0;j < 6 * NODE_NUM;j = j + 1) begin
                     Mat_r[i][j] <= 0;
@@ -127,9 +174,12 @@ module LDLT (
         end
         else begin
             state_r <= state_w;
-            cnt_i_r <= cnt_i_w;
-            cnt_j_r <= cnt_j_w;
-            cnt_k_r <= cnt_k_w;
+            o_data_r <= o_data_w;
+            o_valid_r <= o_valid_w;
+            o_ready_r <= o_ready_w;
+            i_r <= i_w;
+            j_r <= j_w;
+            k_r <= k_w;
             for (i = 0;i < 6 * NODE_NUM;i = i + 1) begin
                 for (j = 0;j < 6 * NODE_NUM;j = j + 1) begin
                     Mat_r[i][j] <= Mat_w[i][j];
