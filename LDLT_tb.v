@@ -1,12 +1,13 @@
 `timescale 1 ns/1 ps
 `define CYCLE       10.0
-`define MAX_CYCLE   10000
+`define MAX_CYCLE   200
 
-`define L_DATA "./pattern/matrix_6*6.dat"
+`define L_DATA "./pattern/matrix_6x6.dat"
+`define GOLDEN "./pattern/golden_6x6.dat"
 
 module LDLT_tb;
 
-    parameter DATA_LEN = 34;
+    parameter DATA_LEN = 32;
     parameter NODE_NUM = 1;
     parameter FRACTION = 16;
 
@@ -18,18 +19,16 @@ module LDLT_tb;
     reg                         i_start;
     reg signed [DATA_LEN - 1:0] i_data;
 
-    wire                         o_ready;
     wire                         o_valid;
     wire signed [DATA_LEN - 1:0] o_data;
     
     reg signed [DATA_LEN - 1:0] L_data [0:L_SIZE - 1];
 
-    LDLT #(.DATA_LEN(DATA_LEN), .NODE_NUM(NODE_NUM), .FRACTION(FRACTION)) u0 (
+    LDLT_sram #(.DATA_LEN(DATA_LEN), .NODE_NUM(NODE_NUM), .FRACTION(FRACTION)) u0 (
         .clk(clk),
         .rst_n(rst_n),
         .i_start(i_start),
         .i_data(i_data),
-        .o_ready(o_ready),
         .o_valid(o_valid),
         .o_data(o_data)
     );
@@ -52,16 +51,14 @@ module LDLT_tb;
         #(`CYCLE * 0.5) rst_n   = 0;
         #(`CYCLE * 2.0) rst_n   = 1;
         #(`CYCLE * 0.5) i_start = 1;
+        #(`CYCLE * 1.0) i_start = 0;
         i = 0;
         while (i < L_SIZE) begin
-            if (o_ready) begin
-                i_data = L_data[i];
-                i = i + 1;  
-            end
+            i_data = L_data[i];
+            i = i + 1;
             #(`CYCLE * 1.0);
         end
         i_data = 0;
-        i_start = 0;
     end
 
     initial begin

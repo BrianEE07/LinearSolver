@@ -1,5 +1,5 @@
 module LDLT #(
-	parameter DATA_LEN = 34,
+	parameter DATA_LEN = 32,
 	parameter NODE_NUM = 100,
 	parameter FRACTION = 16
 )(
