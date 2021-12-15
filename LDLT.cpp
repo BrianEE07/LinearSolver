@@ -2,7 +2,8 @@
 #include <fstream>
 #include <string>
 #include <iomanip>
-#include "libfixmath/fixmath.h"
+#include "fpm/fixed.hpp"
+#include "fpm/ios.hpp"
 
 using namespace std;
 
@@ -32,15 +33,15 @@ float** LDLT_float (float **A, int N) {
     return L;
 }
 
-Fix16** LDLT_fixed (Fix16 **A, int N) {
-    Fix16 **L = new Fix16*[N];
+fpm::fixed_16_16** LDLT_fixed (fpm::fixed_16_16 **A, int N) {
+    fpm::fixed_16_16 **L = new fpm::fixed_16_16*[N];
     for (int i = 0;i < N;++i) {
-        L[i] = new Fix16[N];
+        L[i] = new fpm::fixed_16_16[N];
     } 
 
     for (int i = 0;i < N;++i) {
         for (int j = 0;j < N;++j){
-            L[i][j] = (i >= j) ? A[i][j] : Fix16(0);
+            L[i][j] = (i >= j) ? A[i][j] : fpm::fixed_16_16(0);
         }
     }
 
@@ -59,67 +60,50 @@ Fix16** LDLT_fixed (Fix16 **A, int N) {
 }
 
 int main () {
-    // Fix16 f(100.0);
-    // Fix16 f2(300.54321);
-    // Fix16 f3 = f / f2;
-    // cout << fix16_t(f3) << endl;
-    // cout << float(f3) << endl;
-    // cout << 100 / 300.54321 << endl;
 
-    int N = 858;
+    int N = 6;
+    // int N = 858;
     fstream fin;
-    fin.open("./pattern/matrix_858*858.dat", ios::in);
+    fin.open("./pattern/matrix_6x6_c.dat", ios::in);
+    // fin.open("./pattern/matrix_858x858_c.dat", ios::in);
     if (!fin) {
         cerr << "Can't open file!" << endl;
         exit(1);
     }
 
     float **A_float = new float*[N];
-    Fix16 **A_fixed = new Fix16*[N];
+    fpm::fixed_16_16 **A_fixed = new fpm::fixed_16_16*[N];
+    // Fix16 **A_fixed = new Fix16*[N];
     for (int i = 0;i < N;++i) {
         A_float[i] = new float[N];
     }
     for (int i = 0;i < N;++i) {
-        A_fixed[i] = new Fix16[N];
+        A_fixed[i] = new fpm::fixed_16_16[N];
     }
 
     string data;
     int cnt = 0;
     while (getline(fin, data, ',')) {
         A_float[cnt / N][cnt % N] = stof(data);
-        A_fixed[cnt / N][cnt % N] = Fix16(stof(data));
+        A_fixed[cnt / N][cnt % N] = fpm::fixed_16_16(stof(data));
         ++cnt;
     }
     fin.close();
 
-    // for (int i = 0;i < N;++i) {
-    //     for (int j = 0;j < N;++j) {
-    //         cout << setprecision(5) << fixed << A_float[i][j] << " ";
-    //     }
-    //     cout << endl;
-    // }
-    // for (int i = 0;i < N;++i) {
-    //     for (int j = 0;j < N;++j) {
-    //         cout << setprecision(5) << fixed << float(A_fixed[i][j]) << " ";
-    //     }
-    //     cout << endl;
-    // }
-
     float** L_float = LDLT_float(A_float, N);
-    Fix16** L_fixed = LDLT_fixed(A_fixed, N);
+    fpm::fixed_16_16** L_fixed = LDLT_fixed(A_fixed, N);
 
     for (int i = 0;i < N;++i) {
         for (int j = 0;j < N;++j) {
-            cout << setprecision(5) << fixed << L_float[i][j] << " ";
-            cout << setprecision(5) << fixed << float(L_fixed[i][j]) << " ";
+            cout << setprecision(8) << fixed << L_float[i][j] << " ";
         }
         cout << endl;
     }
-
-    // for (int i = 0;i < N;++i) {
-    //     for (int j = 0;j < N;++j) {
-    //         cout << setprecision(5) << fixed << float(L_fixed[i][j]) << " ";
-    //     }
-    //     cout << endl;
-    // }
+    for (int i = 0;i < N;++i) {
+        for (int j = 0;j < N;++j) {
+            // cout << setprecision(8) << fixed << L_float[i][j] << " ";
+            cout << setprecision(8) << fixed << float(L_fixed[i][j]) << " ";
+        }
+        cout << endl;
+    }  
 }
