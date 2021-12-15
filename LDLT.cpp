@@ -102,7 +102,7 @@ int main () {
     for (int i = 0;i < N;++i) {
         for (int j = 0;j < N;++j) {
             // cout << setprecision(8) << fixed << L_float[i][j] << " ";
-            cout << setprecision(8) << fixed << float(L_fixed[i][j]) << " ";
+            cout << setprecision(8) << fixed << L_fixed[i][j] << " ";
         }
         cout << endl;
     }  
