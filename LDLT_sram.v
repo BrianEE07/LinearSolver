@@ -86,9 +86,12 @@ module LDLT_sram #(
                 (k_r == j_r + 1 && i_r == 6 * NODE_NUM - 1) ? j_r :
                 (k_r == j_r + 1)                            ? i_r :
                 (j_r >= 2 && k_r <= j_r - 2)                ? addr_Lik_1 : 0;
-    assign AB = (j_r >= 2 && k_r <= j_r - 2) ? addr_Ljk_1 :
-                (j_r >= 1 && k_r == j_r + 1) ? j_r - 1 : 0;
+    assign AB = (state_r == WRTE)                            ? ij2addr(i_r + 1, j_r) :
+                (k_r == j_r + 1 && j_r == 6 * NODE_NUM - 1)  ? 0 :
+                (j_r >= 2 && k_r <= j_r - 2)                 ? addr_Ljk_1 :
+                (j_r >= 1 && k_r == j_r + 1)                 ? j_r - 1 : 0;
     assign AC = (state_r == LOAD)               ? addr_Djj :
+                (state_r == WRTE)               ? j_r + 1 :
                 (k_r == j_r)                    ? addr_Djj :
                 (j_r >= 1 && k_r == j_r - 1)    ? addr_Djj :
                 (j_r >= 2 && k_r <= j_r - 2)    ? addr_Dkk_1 : 0;
@@ -229,8 +232,7 @@ module LDLT_sram #(
             end
             WRTE: begin
                 o_valid_w = 1;
-                o_data_w  = 0;
-                // o_data_w  = (i_r == j_r) ? QC : QA;
+                o_data_w  = (i_r == j_r) ? QC : QB;
             end
             default: ;
         endcase
