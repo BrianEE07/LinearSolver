@@ -1,14 +1,18 @@
-`timescale 1 ns/1 ps
+`timescale 1 ns/100 ps
 `define CYCLE       10.0
-`define MAX_CYCLE   10000
+`define MAX_CYCLE   1000000
 
-`define L_DATA "./pattern/matrix_6x6.dat"
-`define L_GOLD "./pattern/golden_6x6.dat"
+// `define L_DATA "./pattern/matrix_6x6.dat"
+// `define L_GOLD "./pattern/golden_6x6.dat"
+// `define L_DATA "./pattern/matrix_18x18.dat"
+// `define L_GOLD "./pattern/golden_18x18.dat"
+`define L_DATA "./pattern/matrix_96x96.dat"
+`define L_GOLD "./pattern/golden_96x96.dat"
 
 module LDLT_tb;
 
     parameter DATA_LEN = 32;
-    parameter NODE_NUM = 1;
+    parameter NODE_NUM = 16;
     parameter FRACTION = 16;
 
     parameter L_SIZE   = 6 * NODE_NUM * (6 * NODE_NUM + 1) / 2;
@@ -36,8 +40,9 @@ module LDLT_tb;
     always #(`CYCLE * 0.5) clk = ~clk;
 
     initial begin
-        $fsdbDumpfile("LDLT_tb.fsdb");
-        $fsdbDumpvars(0, LDLT_tb, "+mda");
+        // $fsdbDumpfile("LDLT_tb.fsdb");
+        // $fsdbDumpvars(0, LDLT_tb, "+mda");
+        // $fsdbDumpvars(0, LDLT_tb);
     end
         
     initial begin

@@ -58,15 +58,46 @@ fpm::fixed_16_16** LDLT_fixed (fpm::fixed_16_16 **A, int N) {
             L[i][j] = (i >= j) ? A[i][j] : fpm::fixed_16_16(0);
         }
     }
-
+    float mac = 0;
     // LDLT
-    for (int i = 0;i < N;++i) {
-        for (int j = 0;j < i;++j) {
-            for (int k = 0;k < j;++k) {
-                L[i][j] -= L[i][k] * L[k][k] * L[j][k];
+    // for (int i = 0;i < N;++i) {
+    //     for (int j = 0;j < i;++j) {
+    //         for (int k = 0;k < j;++k) {
+    //             L[i][j] -= L[i][k] * L[k][k] * L[j][k];
+    //         }
+    //         L[i][j] /= L[j][j];
+    //         L[i][i] -= L[i][j] * L[i][j] * L[j][j];
+    //     }
+    // }
+    // for (int j = 0;j < N;++j) {
+    //     for (int i = j;i < N;++i) {
+    //         for (int k = 0;k <= j;++k) {
+    //             if (k == j) {
+    //                 mac = 0;
+    //                 if (i != j) {
+    //                     L[i][j] /= L[j][j];
+    //                 }
+    //             }
+    //             else if (k < j) {
+    //                 mac += float(L[i][k]) * float(L[k][k]) * float(L[j][k]);
+    //             }
+    //             if (k == j - 1) {
+    //                 fpm::fixed_16_16 mac_fpm {mac};
+    //                 L[i][j] -= mac_fpm;
+    //             }
+    //         }
+    //     }
+    // }
+    for (int j = 0;j < N;++j) {
+        for (int i = j;i < N;++i) {
+            for (int k = 0;k <= j;++k) {
+                if (k == j && i != j) {
+                    L[i][j] /= L[j][j];
+                }
+                else if (k < j) {
+                    L[i][j] -= L[i][k] * L[k][k] * L[j][k];
+                }
             }
-            L[i][j] /= L[j][j];
-            L[i][i] -= L[i][j] * L[i][j] * L[j][j];
         }
     }
 
@@ -106,12 +137,16 @@ void dumpFixed2Bin(string path, fpm::fixed_16_16 **M, int N) {
 
 int main () {
 
-    const int N = 6;
+    const int N = 96;
+    // const int N = 6;
     // const int N = 858;
-    string in_path = "./pattern/matrix_6x6_float.dat";
+    string in_path = "./pattern/matrix_96x96_float.dat";
+    // string in_path = "./pattern/matrix_6x6_float.dat";
     // string in_path = "./pattern/matrix_858x858_float.dat";
-    string out_mat_path = "./pattern/matrix_6x6.dat";
-    string out_gold_path = "./pattern/golden_6x6.dat";
+    string out_mat_path = "./pattern/matrix_96x96.dat";
+    // string out_mat_path = "./pattern/matrix_6x6.dat";
+    string out_gold_path = "./pattern/golden_96x96.dat";
+    // string out_gold_path = "./pattern/golden_6x6.dat";
 
     fstream fin;
     fin.open(in_path, ios::in);

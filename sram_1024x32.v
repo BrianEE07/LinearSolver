@@ -11,8 +11,8 @@ module sram_1024x32 (
     parameter BITS       = 32;
     // parameter WORD_DEPTH = 1024;
     // parameter ADDR_WIDTH = 10;
-    parameter WORD_DEPTH = 8;
-    parameter ADDR_WIDTH = 3;
+    parameter WORD_DEPTH = 128;
+    parameter ADDR_WIDTH = 7;
     integer i;
 
     input                     CLK;
