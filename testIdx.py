@@ -11,7 +11,7 @@ def ij2k (i, j, n):
 
 if __name__ == "__main__":
     
-    n = 6;
+    n = 96;
 
     for k in range(int(n * (n - 1) / 2)):
         (i, j) = k2ij(k, n)

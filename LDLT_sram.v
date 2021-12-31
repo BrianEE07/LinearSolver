@@ -1,4 +1,4 @@
-module LDLT_sram #(
+module LDLT #(
 	parameter DATA_LEN = 32,
 	parameter NODE_NUM = 100,
 	parameter FRACTION = 16
@@ -17,9 +17,8 @@ module LDLT_sram #(
     localparam DIAG = 3'b011;
     localparam LTRI = 3'b100;
     localparam WRTE = 3'b101;
-    
-    parameter ADDR_LEN = 18;
-    parameter ROUND    = ( (1 << 2 * FRACTION) - 1 );
+
+    parameter ROUND = ((1 << 2 * FRACTION) - 1);
 
     input                   clk, rst_n;
     input                   i_start;
@@ -40,26 +39,19 @@ module LDLT_sram #(
     wire signed [DATA_LEN + FRACTION - 1:0] submac;
     wire signed [DATA_LEN * 2 - 1:0]        quotient;
 
-    wire        [ADDR_LEN - 1:0] AA, AB, AC;
+    wire        [17:0]           AA, AB;
+    wire        [9:0]            AC;
     wire signed [DATA_LEN - 1:0] DA, DB, DC;
     wire signed [DATA_LEN - 1:0] QA, QB, QC;
-    wire CENA, CENB, CENC;
-    wire WENA, WENB, WENC;
+    wire                         CENA, CENB, CENC;
+    wire                         WENA, WENB, WENC;
 
-    wire [9:0]  addr_Dkk_1;
-    wire [9:0]  addr_Djj;
-    wire [17:0] addr_Lij;
-    wire [17:0] addr_Lik_1;
-    wire [17:0] addr_Ljk_1;
+    wire [17:0] Lij;
+    wire [17:0] Lik_1;
+    wire [17:0] Ljk_1;
 
     assign o_valid = o_valid_r;
     assign o_data  = o_data_r;
-
-    assign addr_Dkk_1 = k_r + 1;
-    assign addr_Djj   = j_r;
-    assign addr_Lij   = ij2addr(i_r, j_r);
-    assign addr_Lik_1 = ij2addr(i_r, k_r + 1);
-    assign addr_Ljk_1 = ij2addr(j_r, k_r + 1);
 
     assign CENA = 0;
     assign CENB = ~(WENA); // disable port B when port A is writing data
@@ -71,7 +63,7 @@ module LDLT_sram #(
     assign WENC = (state_r == LOAD && i_r == j_r) ? 0 :
                   (state_r == DIAG && k_r == j_r) ? 0 : 1;
 
-    assign submac = ((state_r == DIAG) ? QC : QA) - (((mac_r < 0) ? mac_r + ROUND : mac_r) >>> 2 * FRACTION); // will mac overflow?
+    assign submac   = ((state_r == DIAG) ? QC : QA) - (((mac_r < 0) ? mac_r + ROUND : mac_r) >>> 2 * FRACTION); // will mac overflow?
     assign quotient = (submac << FRACTION) / QC;
 
     assign DA = (state_r == LOAD) ? i_data :
@@ -80,21 +72,32 @@ module LDLT_sram #(
     assign DC = (state_r == LOAD) ? i_data :
                 (state_r == DIAG) ? submac : 0;
 
-    assign AA = (state_r == LOAD)                           ? addr_Lij :
-                (k_r == j_r)                                ? addr_Lij :
-                (j_r >= 1 && k_r == j_r - 1)                ? addr_Lij :
+    assign Lij   = flat_addr(i_r, j_r);
+    assign Lik_1 = flat_addr(i_r, k_r + 1);
+    assign Ljk_1 = flat_addr(j_r, k_r + 1);
+
+    assign AA = (state_r == LOAD)                           ? Lij :
+                (k_r == j_r)                                ? Lij :
+                (j_r >= 1 && k_r == j_r - 1)                ? Lij :
                 (k_r == j_r + 1 && i_r == 6 * NODE_NUM - 1) ? j_r :
                 (k_r == j_r + 1)                            ? i_r :
-                (j_r >= 2 && k_r <= j_r - 2)                ? addr_Lik_1 : 0;
-    assign AB = (state_r == WRTE)                            ? ij2addr(i_r + 1, j_r) :
-                (k_r == j_r + 1 && j_r == 6 * NODE_NUM - 1)  ? 0 :
-                (j_r >= 2 && k_r <= j_r - 2)                 ? addr_Ljk_1 :
-                (j_r >= 1 && k_r == j_r + 1)                 ? j_r - 1 : 0;
-    assign AC = (state_r == LOAD)               ? addr_Djj :
-                (state_r == WRTE)               ? j_r + 1 :
-                (k_r == j_r)                    ? addr_Djj :
-                (j_r >= 1 && k_r == j_r - 1)    ? addr_Djj :
-                (j_r >= 2 && k_r <= j_r - 2)    ? addr_Dkk_1 : 0;
+                (j_r >= 2 && k_r <= j_r - 2)                ? Lik_1 : 0;
+    assign AB = (state_r == WRTE)                           ? Lij + 1 :
+                (k_r == j_r + 1 && j_r == 6 * NODE_NUM - 1) ? 0 :
+                (j_r >= 2 && k_r <= j_r - 2)                ? Ljk_1 :
+                (j_r >= 1 && k_r == j_r + 1)                ? j_r - 1 : 0;
+    assign AC = (state_r == LOAD)            ? j_r :
+                (state_r == WRTE)            ? j_r + 1 :
+                (k_r == j_r)                 ? j_r :
+                (j_r >= 1 && k_r == j_r - 1) ? j_r :
+                (j_r >= 2 && k_r <= j_r - 2) ? k_r + 1 : 0;
+
+    function [17:0] flat_addr;
+        input [9:0] i, j;
+        begin
+            flat_addr = ((6 * NODE_NUM * (6 * NODE_NUM - 1)) >> 1) - (((6 * NODE_NUM - j) * (6 * NODE_NUM - j - 1)) >> 1) + i - j - 1;
+        end
+    endfunction
 
     // for L
     sram_dp_262144x32 r0 (
@@ -112,7 +115,7 @@ module LDLT_sram #(
     );
 
     // for D
-    sram_1024x32 r1 (
+    sram_sp_1024x32 r1 (
         .Q(QC),
         .CLK(clk),
         .CEN(CENC),
@@ -120,13 +123,6 @@ module LDLT_sram #(
         .A(AC),
         .D(DC)
     );
-
-    function [17:0] ij2addr;
-        input [9:0] i, j;
-        begin
-            ij2addr = ((6 * NODE_NUM * (6 * NODE_NUM - 1)) >> 1) - (((6 * NODE_NUM - j) * (6 * NODE_NUM - j - 1)) >> 1) + i - j - 1;
-        end
-    endfunction
 
     // FSM
     always @(*) begin
@@ -214,8 +210,8 @@ module LDLT_sram #(
     // Combinational
     always @(*) begin
         o_valid_w = 0;
-        o_data_w = 0;
-        mac_w = mac_r;
+        o_data_w  = 0;
+        mac_w     = mac_r;
         case (state_r)
             IDLE: ;
             LOAD: ;
