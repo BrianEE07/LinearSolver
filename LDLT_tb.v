@@ -1,6 +1,6 @@
 `timescale 1 ns/100 ps
 `define CYCLE       10.0
-`define MAX_CYCLE   1000000
+`define MAX_CYCLE   10000000
 
 module LDLT_tb;
 
@@ -16,6 +16,10 @@ module LDLT_tb;
         `define   L_DATA "./pattern/matrix_96x96.dat"
         `define   L_GOLD "./pattern/golden_96x96.dat"
         parameter NODE_NUM = 16;
+    `elsif m210
+        `define   L_DATA "./pattern/matrix_210x210.dat"
+        `define   L_GOLD "./pattern/golden_210x210.dat"
+        parameter NODE_NUM = 35;
     `else
         `define   L_DATA "./pattern/matrix_6x6.dat"
         `define   L_GOLD "./pattern/golden_6x6.dat"
@@ -98,6 +102,9 @@ module LDLT_tb;
                     // , i, L_gold[i], o_data, error_rev);
                     // error = error + 1;
                 end
+                // $display ("L[%d]: Error! golden=%d, yours=%d"
+                //  , i, L_gold[i], o_data);
+                // error = error + 1;
             end
             i = i + 1;
             #(`CYCLE * 1.0);

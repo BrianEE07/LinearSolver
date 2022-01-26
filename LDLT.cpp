@@ -137,15 +137,16 @@ void dumpFixed2Bin(string path, fpm::fixed_16_16 **M, int N) {
 
 int main () {
 
-    const int N = 96;
+    // const int N = 96;
+    const int N = 210;
     // const int N = 6;
     // const int N = 858;
-    string in_path = "./pattern/matrix_96x96_float.dat";
+    string in_path = "./pattern/matrix_210x210_float.dat";
     // string in_path = "./pattern/matrix_6x6_float.dat";
     // string in_path = "./pattern/matrix_858x858_float.dat";
-    string out_mat_path = "./pattern/matrix_96x96.dat";
+    string out_mat_path = "./pattern/matrix_210x210.dat";
     // string out_mat_path = "./pattern/matrix_6x6.dat";
-    string out_gold_path = "./pattern/golden_96x96.dat";
+    string out_gold_path = "./pattern/golden_210x210.dat";
     // string out_gold_path = "./pattern/golden_6x6.dat";
 
     fstream fin;

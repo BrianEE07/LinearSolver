@@ -18,8 +18,10 @@ module sram_dp_131072x64_wp2 (
     parameter BITS       = 64;
     // parameter WORD_DEPTH = 131072;
     // parameter ADDR_WIDTH = 17;
-    parameter WORD_DEPTH = 8192;
-    parameter ADDR_WIDTH = 13;
+    parameter WORD_DEPTH = 32768;
+    parameter ADDR_WIDTH = 15;
+    // parameter WORD_DEPTH = 8192;
+    // parameter ADDR_WIDTH = 13;
     // parameter WORD_DEPTH = 16; // for tb
     // parameter ADDR_WIDTH = 4;  // for tb
     parameter HBITS      = BITS / 2;

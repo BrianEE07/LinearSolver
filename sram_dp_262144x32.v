@@ -18,8 +18,10 @@ module sram_dp_262144x32 (
     parameter BITS       = 32;
     // parameter WORD_DEPTH = 262144;
     // parameter ADDR_WIDTH = 18;
-    parameter WORD_DEPTH = 8192;
-    parameter ADDR_WIDTH = 13;
+    parameter WORD_DEPTH = 32768;
+    parameter ADDR_WIDTH = 15;
+    // parameter WORD_DEPTH = 8192;
+    // parameter ADDR_WIDTH = 13;
     // parameter WORD_DEPTH = 16; // for tb
     // parameter ADDR_WIDTH = 4;  // for tb
     integer i;

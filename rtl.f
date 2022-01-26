@@ -10,5 +10,5 @@
 /* design */
 //./LDLT.v
 //./LDLT_sram.v
-./LDLT_p2.v
-//./LDLT_p4.v
+//./LDLT_p2.v
+./LDLT_p4.v
